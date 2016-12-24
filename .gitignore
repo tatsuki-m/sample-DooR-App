@@ -27,3 +27,11 @@
 *.exe
 *.out
 *.app
+
+Sample-DooR-App
+
+# ignore for cmake
+CmakeCache.txt
+Makefile
+cmake_install.cmake
+CMakeFiles/

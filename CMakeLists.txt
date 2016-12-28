@@ -19,9 +19,11 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 # install package
 find_package(door_bridge REQUIRED)
 find_package(door_shared_memory REQUIRED)
+find_package(door_api REQUIRED)
 
 # select executable file
 add_executable(Sample-DooR-App ${APISrcs})
 target_link_libraries(Sample-DooR-App door_bridge)
 target_link_libraries(Sample-DooR-App door_shared_memory)
+target_link_libraries(Sample-DooR-App door_api)
 

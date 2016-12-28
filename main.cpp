@@ -8,9 +8,16 @@
 int
 main() {
     DoorBridge bridge = DoorBridge();
-    Dpi *dpi = NULL;
+    Dpi *dpi;
     std::string keyword = "hoge";
-    bridge.getAllInformation(dpi, keyword);
+    std::cout << "dpi address:" << &dpi << std::endl;
+    bool is_success = bridge.getAllInformation(dpi, keyword);
+
+    if (is_success) {
+      std::cout << dpi->id_ << std::endl;
+    } else {
+        std::cout << "false" << std::endl;
+    }
     delete dpi;
     return 0;
 };

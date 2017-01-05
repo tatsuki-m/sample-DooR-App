@@ -14,7 +14,7 @@ main() {
     bool is_success = bridge.getAllInformation(dpi, keyword);
 
     if (is_success) {
-      std::cout << dpi->id_ << std::endl;
+        std::cout << "Sample App" <<  dpi->id_ << std::endl;
     } else {
         std::cout << "false" << std::endl;
     }

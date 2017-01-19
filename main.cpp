@@ -9,7 +9,7 @@
 #include "door_shared_memory/dpi.h"
 #include "door_shared_memory/shared_packet_information.h"
 
-const int MAX_COUNT = 1002;
+const int MAX_COUNT = 1000;
 std::string BASE_RECORDER_DIR = "/tmp/recorder/";
 std::string ENV = "native";
 
@@ -18,7 +18,7 @@ main() {
     // init
     unsigned int counter = 0;
     struct timespec startTime, endTime;
-    Dpi *dpi = NULL;
+    Dpi *dpi;
 
     // create timer
     std::string fileName = BASE_RECORDER_DIR + ENV + "_" + std::to_string(SharedPacketInformation::getSharedDataSize()) + "_throuput.csv";
@@ -28,13 +28,16 @@ main() {
     // init DoorBridge
     DoorBridge bridge = DoorBridge();
 
-
+    clock_gettime(CLOCK_MONOTONIC, &startTime);
     if (bridge.callDoorWithSem()) {
+        std::cout << "reading start" << std::endl;
+        bridge.waitDoorNotification();
         while(counter<MAX_COUNT) {
             bridge.getPacketDataWithSem(dpi);
             counter++;
         }
     }
+    clock_gettime(CLOCK_MONOTONIC, &endTime);
     ofs << std::setfill('0') << std::setw(6) << startTime.tv_nsec << ",";
     ofs << std::setfill('0') << std::setw(6) << endTime.tv_nsec << ",";
     ofs << endTime.tv_nsec - startTime.tv_nsec << std::endl;

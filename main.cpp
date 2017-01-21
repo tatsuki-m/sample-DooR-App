@@ -14,7 +14,6 @@
 const int MAX_COUNT = 1000;
 std::string BASE_RECORDER_DIR = "/tmp/recorder/";
 
-
 // 1st argument env docker = 0, native = 1;
 // 2nd argument ipc-metor  0: SHM, 1: UDS, 2: TCP, 3: ZERO-SHM
 // 3rd argument number
@@ -37,12 +36,14 @@ main(int argc, char* argv[]) {
     DoorBridge bridge = DoorBridge();
     Dpi *dpi;
 
-    switch (atoi(argv[0])) {
+    std::cout << atoi(argv[1]);
+
+    switch (atoi(argv[1])) {
         case 0:
-            env = "docker";
+            env = "native";
             break;
         case 1:
-            env = "native";
+            env = "docker";
             break;
         default:
             std::cerr << "invalid 1st argument number";
@@ -53,13 +54,11 @@ main(int argc, char* argv[]) {
     time_t start = time(NULL);
     time_t seconds = 10; // after 60s, end loop.
     endwait = start + seconds;
-    printf("start time is : %s", ctime(&start));
-
+    std::cout << "reading start" << std::endl;
     switch (atoi(argv[2])) {
         case 0:
             ipc = "shm";
-            std::cout << "reading start" << std::endl;
-            std::cout << "ipc: shm" << std::endl;
+            std::cout << "======ipc: Shared Memory======" << std::endl;
 
             if (atoi(argv[4]) == 0) {
                 std::cout << "==================1000 times=================" << std::endl;
@@ -80,8 +79,23 @@ main(int argc, char* argv[]) {
             break;
         case 1:
             ipc = "uds";
-            clock_gettime(CLOCK_MONOTONIC, &startTime);
-            clock_gettime(CLOCK_MONOTONIC, &endTime);
+            std::cout << "======ipc: Unix Domain Socket======" << std::endl;
+            if (atoi(argv[4]) == 0) {
+                clock_gettime(CLOCK_MONOTONIC, &startTime);
+                bridge.callDoorWithUds();
+                std::cout << "==================1000 times=================" << std::endl;
+                while(counter<MAX_COUNT) {
+                    bridge.getPacketDataWithUds(dpi);
+                    counter++;
+                }
+                clock_gettime(CLOCK_MONOTONIC, &endTime);
+            } else {
+                std::cout << "==================60 sec timer=================" << std::endl;
+                bridge.callDoorWithSem();
+                while(time(NULL) < endwait) {
+                    bridge.getPacketDataWithSem(dpi);
+                }
+            }
             break;
         case 2:
             ipc = "tcp";
@@ -100,14 +114,16 @@ main(int argc, char* argv[]) {
 
     // create timer
     fileName = BASE_RECORDER_DIR + env + "_" + std::to_string(SharedPacketInformation::getSharedDataSize()) + "_" + ipc + "/"  "throuput_" + argv[3] +".csv";
+    std::cout << fileName << std::endl;
     std::ofstream ofs(fileName.c_str());
     ofs << "start_time, end_time, interval" << std::endl;
     ofs << std::setfill('1') << std::setw(6) << startTime.tv_nsec << ",";
     ofs << std::setfill('0') << std::setw(6) << endTime.tv_nsec << ",";
     ofs << endTime.tv_nsec - startTime.tv_nsec << std::endl;
 
+    dpi=NULL;
     delete dpi;
-    std::cout << "fin" << std::endl;
+    std::cout << "===================fin====================" << std::endl;
     return 0;
 };
 

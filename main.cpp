@@ -58,9 +58,11 @@ main(int argc, char* argv[]) {
 
     time_t endwait;
     time_t start = time(NULL);
-    time_t seconds = 10; // after 60s, end loop.
+    time_t seconds = 30; // after 60s, end loop.
     endwait = start + seconds;
     std::cout << "reading start" << std::endl;
+    printf("%s\n", ctime(&start));
+
     switch (atoi(argv[2])) {
         case 0:
             ipc = "shm";
@@ -97,9 +99,9 @@ main(int argc, char* argv[]) {
                 clock_gettime(CLOCK_MONOTONIC, &endTime);
             } else {
                 std::cout << "==================60 sec timer=================" << std::endl;
-                bridge.callDoorWithSem();
+                bridge.callDoorWithUds();
                 while(time(NULL) < endwait) {
-                    bridge.getPacketDataWithSem(dpi);
+                    bridge.getPacketDataWithUds(dpi);
                 }
             }
             break;
@@ -136,6 +138,12 @@ main(int argc, char* argv[]) {
                     clock_gettime(CLOCK_MONOTONIC, &endTime);
                 } else {
                     std::cout << "==================60 sec timer=================" << std::endl;
+                    bridge.callDoorWithSem();
+                    while(time(NULL) < endwait) {
+                        sharedBuffer->reader_.wait();
+                            dpi = &(sharedBuffer->sharedData_);
+                        sharedBuffer->writer_.post();
+                    }
                 }
             }
             break;
@@ -144,14 +152,16 @@ main(int argc, char* argv[]) {
             return 1;
     }
 
-    // create timer
-    fileName = BASE_RECORDER_DIR + env + "_" + std::to_string(SharedPacketInformation::getSharedDataSize()) + "_" + ipc + "/"  "throuput" + ".csv";
-    std::cout << fileName << std::endl;
-    std::ofstream ofs(fileName.c_str(), std::ios::app);
-    ofs << argv[3] << ",";
-    ofs << std::setfill('1') << std::setw(6) << startTime.tv_nsec << ",";
-    ofs << std::setfill('0') << std::setw(6) << endTime.tv_nsec << ",";
-    ofs << endTime.tv_nsec - startTime.tv_nsec << std::endl;
+    if (atoi(argv[4]) == 0) {
+        // create timer
+        fileName = BASE_RECORDER_DIR + env + "_" + std::to_string(SharedPacketInformation::getSharedDataSize()) + "_" + ipc + "/"  "throuput" + ".csv";
+        std::cout << fileName << std::endl;
+        std::ofstream ofs(fileName.c_str(), std::ios::app);
+        ofs << argv[3] << ",";
+        ofs << std::setfill('1') << std::setw(6) << startTime.tv_nsec << ",";
+        ofs << std::setfill('0') << std::setw(6) << endTime.tv_nsec << ",";
+        ofs << endTime.tv_nsec - startTime.tv_nsec << std::endl;
+    }
 
     dpi=NULL;
     delete dpi;

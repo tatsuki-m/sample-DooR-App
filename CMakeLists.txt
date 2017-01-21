@@ -7,7 +7,7 @@ project(Sample-DooR-App)
 include(CheckCXXCompilerFlag)
 check_cxx_compiler_flag("-std=c++11" HAS_CPP11)
 if (HAS_CPP11)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -std=c++11 -lrt")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -std=c++11 -lrt -pthread")
 endif()
 
 # search file and insert value to first argument, APISrcs

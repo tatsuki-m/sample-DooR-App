@@ -150,6 +150,9 @@ door_api_DIR:PATH=/usr/local/share/cmake/door_api
 //The directory containing a CMake configuration file for door_bridge.
 door_bridge_DIR:PATH=/usr/local/share/cmake/door_bridge
 
+//The directory containing a CMake configuration file for door_ipc.
+door_ipc_DIR:PATH=/usr/local/share/cmake/door_ipc
+
 //The directory containing a CMake configuration file for door_shared_memory.
 door_shared_memory_DIR:PATH=/usr/local/share/cmake/door_shared_memory
 

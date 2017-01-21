@@ -6,10 +6,16 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include <boost/interprocess/shared_memory_object.hpp>
+#include <boost/interprocess/mapped_region.hpp>
+#include <boost/interprocess/sync/interprocess_semaphore.hpp>
+
 #include "door_bridge/door_bridge.h"
 #include "door_unix_domain_socket_client/unix_domain_socket_client.h"
 #include "door_ipc/dpi.h"
 #include "door_ipc/shared_packet_information.h"
+#include "door_ipc/shared_packet_information.h"
+#include "door_ipc/dpi.h"
 
 const int MAX_COUNT = 1000;
 std::string BASE_RECORDER_DIR = "/tmp/recorder/";
@@ -101,11 +107,37 @@ main(int argc, char* argv[]) {
             ipc = "tcp";
             clock_gettime(CLOCK_MONOTONIC, &startTime);
             clock_gettime(CLOCK_MONOTONIC, &endTime);
+
+            if (atoi(argv[4]) == 0) {
+            } else {
+            }
             break;
         case 3:
             ipc = "zero-shm";
-            clock_gettime(CLOCK_MONOTONIC, &startTime);
-            clock_gettime(CLOCK_MONOTONIC, &endTime);
+            std::cout << "======ipc: Zero-Copy-Shm======" << std::endl;
+            {
+                clock_gettime(CLOCK_MONOTONIC, &startTime);
+                bridge.callDoorWithSem();
+
+                //get shared memory name
+                std::string sharedKey = bridge.shareKey();
+                shared_memory_object shm(open_only, sharedKey.c_str(), read_write);
+                mapped_region region(shm, read_write);
+                void *addr = region.get_address();
+                SharedPacketInformation* sharedBuffer = static_cast<SharedPacketInformation*>(addr);
+                if (atoi(argv[4]) == 0) {
+                    std::cout << "==================1000 times=================" << std::endl;
+                    while(counter<MAX_COUNT) {
+                        sharedBuffer->reader_.wait();
+                            dpi = &(sharedBuffer->sharedData_);
+                        sharedBuffer->writer_.post();
+                        counter++;
+                    }
+                    clock_gettime(CLOCK_MONOTONIC, &endTime);
+                } else {
+                    std::cout << "==================60 sec timer=================" << std::endl;
+                }
+            }
             break;
         default:
             std::cerr << "invalid 2nd argument number";
@@ -113,10 +145,10 @@ main(int argc, char* argv[]) {
     }
 
     // create timer
-    fileName = BASE_RECORDER_DIR + env + "_" + std::to_string(SharedPacketInformation::getSharedDataSize()) + "_" + ipc + "/"  "throuput_" + argv[3] +".csv";
+    fileName = BASE_RECORDER_DIR + env + "_" + std::to_string(SharedPacketInformation::getSharedDataSize()) + "_" + ipc + "/"  "throuput" + ".csv";
     std::cout << fileName << std::endl;
-    std::ofstream ofs(fileName.c_str());
-    ofs << "start_time, end_time, interval" << std::endl;
+    std::ofstream ofs(fileName.c_str(), std::ios::app);
+    ofs << argv[3] << ",";
     ofs << std::setfill('1') << std::setw(6) << startTime.tv_nsec << ",";
     ofs << std::setfill('0') << std::setw(6) << endTime.tv_nsec << ",";
     ofs << endTime.tv_nsec - startTime.tv_nsec << std::endl;

@@ -22,12 +22,11 @@ std::string BASE_RECORDER_DIR = "/tmp/recorder/";
 
 // 1st argument env docker = 0, native = 1;
 // 2nd argument ipc-metor  0: SHM, 1: UDS, 2: TCP, 3: ZERO-SHM
-// 3rd argument number
-// 4th argument timer flag  0: no timer, 1: timer
+// 3rd argument timer flag  0: no timer, other
 int
 main(int argc, char* argv[]) {
-    if (argc != 5) {
-        std::cerr << "Please input argument" << std::endl;
+    if (argc != 4) {
+        std::cerr << "3 arguments are needed" << std::endl;
         return 1;
     }
 
@@ -58,7 +57,7 @@ main(int argc, char* argv[]) {
 
     time_t endwait;
     time_t start = time(NULL);
-    time_t seconds = 30; // after 60s, end loop.
+    time_t seconds = atoi(argv[3]);
     endwait = start + seconds;
     std::cout << "reading start" << std::endl;
     printf("%s\n", ctime(&start));
@@ -68,40 +67,55 @@ main(int argc, char* argv[]) {
             ipc = "shm";
             std::cout << "======ipc: Shared Memory======" << std::endl;
 
-            if (atoi(argv[4]) == 0) {
+            if (atoi(argv[3]) == 0) {
                 std::cout << "==================1000 times=================" << std::endl;
                 clock_gettime(CLOCK_MONOTONIC, &startTime);
                 bridge.callDoorWithSem();
                 while(counter<MAX_COUNT) {
+                    Dpi *dpi;
                     bridge.getPacketDataWithSem(dpi);
+                    delete dpi;
                     counter++;
                 }
                 clock_gettime(CLOCK_MONOTONIC, &endTime);
             } else {
-                std::cout << "==================60 sec timer=================" << std::endl;
+                std::cout << "==================" << seconds << "se sec timer=================" << std::endl;
                 bridge.callDoorWithSem();
                 while(time(NULL) < endwait) {
+                    Dpi *dpi;
                     bridge.getPacketDataWithSem(dpi);
+                    delete dpi;
                 }
             }
             break;
         case 1:
-            ipc = "uds";
             std::cout << "======ipc: Unix Domain Socket======" << std::endl;
-            if (atoi(argv[4]) == 0) {
-                clock_gettime(CLOCK_MONOTONIC, &startTime);
-                bridge.callDoorWithUds();
-                std::cout << "==================1000 times=================" << std::endl;
-                while(counter<MAX_COUNT) {
-                    bridge.getPacketDataWithUds(dpi);
-                    counter++;
-                }
-                clock_gettime(CLOCK_MONOTONIC, &endTime);
-            } else {
-                std::cout << "==================60 sec timer=================" << std::endl;
-                bridge.callDoorWithUds();
-                while(time(NULL) < endwait) {
-                    bridge.getPacketDataWithUds(dpi);
+            {
+                ipc = "uds";
+                if (atoi(argv[3]) == 0) {
+                    clock_gettime(CLOCK_MONOTONIC, &startTime);
+                    bridge.callDoorWithUds();
+
+                    std::cout << "==================1000 times=================" << std::endl;
+                    while(counter<MAX_COUNT) {
+                        bridge.getPacketDataWithUds(dpi);
+                        counter++;
+                    }
+                    clock_gettime(CLOCK_MONOTONIC, &endTime);
+                } else {
+                    std::cout << "==================" << seconds << "se sec timer=================" << std::endl;
+                    bridge.callDoorWithUds();
+                    //get shared memory name
+                    std::string sharedKey = bridge.shareKey();
+                    SocketClient socket = SocketClient(sharedKey);
+                    while(time(NULL) < endwait) {
+                        //bridge.getPacketDataWithUds(dpi);
+                        std::cout << "loop" << std::endl;
+                        socket.run();
+                        socket.handle();
+                        socket.getDpi(dpi);
+                    }
+                    socket.closeSocket();
                 }
             }
             break;
@@ -110,7 +124,7 @@ main(int argc, char* argv[]) {
             clock_gettime(CLOCK_MONOTONIC, &startTime);
             clock_gettime(CLOCK_MONOTONIC, &endTime);
 
-            if (atoi(argv[4]) == 0) {
+            if (atoi(argv[3]) == 0) {
             } else {
             }
             break;
@@ -127,7 +141,7 @@ main(int argc, char* argv[]) {
                 mapped_region region(shm, read_write);
                 void *addr = region.get_address();
                 SharedPacketInformation* sharedBuffer = static_cast<SharedPacketInformation*>(addr);
-                if (atoi(argv[4]) == 0) {
+                if (atoi(argv[3]) == 0) {
                     std::cout << "==================1000 times=================" << std::endl;
                     while(counter<MAX_COUNT) {
                         sharedBuffer->reader_.wait();
@@ -137,7 +151,7 @@ main(int argc, char* argv[]) {
                     }
                     clock_gettime(CLOCK_MONOTONIC, &endTime);
                 } else {
-                    std::cout << "==================60 sec timer=================" << std::endl;
+                    std::cout << "=================="<< seconds << "sec timer=================" << std::endl;
                     bridge.callDoorWithSem();
                     while(time(NULL) < endwait) {
                         sharedBuffer->reader_.wait();
@@ -152,12 +166,11 @@ main(int argc, char* argv[]) {
             return 1;
     }
 
-    if (atoi(argv[4]) == 0) {
+    if (atoi(argv[3]) == 0) {
         // create timer
         fileName = BASE_RECORDER_DIR + env + "_" + std::to_string(SharedPacketInformation::getSharedDataSize()) + "_" + ipc + "/"  "throuput" + ".csv";
         std::cout << fileName << std::endl;
         std::ofstream ofs(fileName.c_str(), std::ios::app);
-        ofs << argv[3] << ",";
         ofs << std::setfill('1') << std::setw(6) << startTime.tv_nsec << ",";
         ofs << std::setfill('0') << std::setw(6) << endTime.tv_nsec << ",";
         ofs << endTime.tv_nsec - startTime.tv_nsec << std::endl;

@@ -95,10 +95,16 @@ main(int argc, char* argv[]) {
                 if (atoi(argv[3]) == 0) {
                     clock_gettime(CLOCK_MONOTONIC, &startTime);
                     bridge.callDoorWithUds();
+                    //get shared memory name
+                    std::string sharedKey = bridge.shareKey();
 
                     std::cout << "==================1000 times=================" << std::endl;
                     while(counter<MAX_COUNT) {
-                        bridge.getPacketDataWithUds(dpi);
+                        SocketClient socket = SocketClient(sharedKey);
+                        socket.run();
+                        socket.handle();
+                        socket.getDpi(dpi);
+                        socket.closeSocket();
                         counter++;
                     }
                     clock_gettime(CLOCK_MONOTONIC, &endTime);
@@ -107,15 +113,14 @@ main(int argc, char* argv[]) {
                     bridge.callDoorWithUds();
                     //get shared memory name
                     std::string sharedKey = bridge.shareKey();
-                    SocketClient socket = SocketClient(sharedKey);
                     while(time(NULL) < endwait) {
-                        //bridge.getPacketDataWithUds(dpi);
-                        std::cout << "loop" << std::endl;
+                        bridge.getPacketDataWithUds(dpi);
+                        SocketClient socket = SocketClient(sharedKey);
                         socket.run();
                         socket.handle();
                         socket.getDpi(dpi);
+                        socket.closeSocket();
                     }
-                    socket.closeSocket();
                 }
             }
             break;
@@ -150,9 +155,33 @@ main(int argc, char* argv[]) {
                         counter++;
                     }
                     clock_gettime(CLOCK_MONOTONIC, &endTime);
-                } else {
+                } else if (atoi(argv[3]) < 60) {
                     std::cout << "=================="<< seconds << "sec timer=================" << std::endl;
                     bridge.callDoorWithSem();
+                    while(time(NULL) < endwait) {
+                        sharedBuffer->reader_.wait();
+                            dpi = &(sharedBuffer->sharedData_);
+                        sharedBuffer->writer_.post();
+                    }
+                } else {
+                    std::cout << "================== throughput evaluation: 1000 times =================" << std::endl;
+                    while(counter<MAX_COUNT) {
+                        sharedBuffer->reader_.wait();
+                            dpi = &(sharedBuffer->sharedData_);
+                        sharedBuffer->writer_.post();
+                        counter++;
+                    }
+
+                    fileName = BASE_RECORDER_DIR + "multi_" + env + "_" + std::to_string(SharedPacketInformation::getSharedDataSize()) + "_" + ipc + "/throuput" + ".csv";
+                    std::cout << fileName << std::endl;
+                    std::ofstream ofs(fileName.c_str(), std::ios::app);
+                    ofs << std::setfill('0') << std::setw(6) << startTime.tv_nsec << ",";
+                    ofs << std::setfill('0') << std::setw(6) << endTime.tv_nsec << ",";
+                    ofs << endTime.tv_nsec - startTime.tv_nsec << std::endl;
+
+                    std::cout << "============= throughput evalucation fin==============" << std::endl;
+                    std::cout << "============= loop ==============" << std::endl;
+
                     while(time(NULL) < endwait) {
                         sharedBuffer->reader_.wait();
                             dpi = &(sharedBuffer->sharedData_);
@@ -166,15 +195,35 @@ main(int argc, char* argv[]) {
             return 1;
     }
 
+    // no timer
     if (atoi(argv[3]) == 0) {
         // create timer
         fileName = BASE_RECORDER_DIR + env + "_" + std::to_string(SharedPacketInformation::getSharedDataSize()) + "_" + ipc + "/"  "throuput" + ".csv";
         std::cout << fileName << std::endl;
         std::ofstream ofs(fileName.c_str(), std::ios::app);
-        ofs << std::setfill('1') << std::setw(6) << startTime.tv_nsec << ",";
+        if (atoi(argv[2]) == 1) {
+            // socket 1MB takes more than 1sec
+            ofs << std::setfill('1') << std::setw(6) << startTime.tv_sec << "." << std::setfill('1') << std::setw(6) << startTime.tv_nsec << ",";
+            ofs << std::setfill('1') << std::setw(6) << endTime.tv_sec << "." << std::setfill('1') << std::setw(6) << endTime.tv_nsec << "," << std::endl;
+        } else {
+            ofs << std::setfill('0') << std::setw(6) << startTime.tv_nsec << ",";
+            ofs << std::setfill('0') << std::setw(6) << endTime.tv_nsec << ",";
+            ofs << endTime.tv_nsec - startTime.tv_nsec << std::endl;
+        }
+    }
+
+    /*
+    // measurement for multi-container
+    if (atoi(argv[3]) >= 60) {
+        // create timer
+        fileName = BASE_RECORDER_DIR + "multi_" + env + "_" + std::to_string(SharedPacketInformation::getSharedDataSize()) + "_" + ipc + "/throuput" + ".csv";
+        std::cout << fileName << std::endl;
+        std::ofstream ofs(fileName.c_str(), std::ios::app);
+        ofs << std::setfill('0') << std::setw(6) << startTime.tv_nsec << ",";
         ofs << std::setfill('0') << std::setw(6) << endTime.tv_nsec << ",";
         ofs << endTime.tv_nsec - startTime.tv_nsec << std::endl;
     }
+    */
 
     dpi=NULL;
     delete dpi;

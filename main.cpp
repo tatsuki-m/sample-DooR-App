@@ -171,6 +171,8 @@ main(int argc, char* argv[]) {
                         sharedBuffer->writer_.post();
                         counter++;
                     }
+                    clock_gettime(CLOCK_MONOTONIC, &endTime);
+                    std::cout << "============= throughput evalucation fin==============" << std::endl;
 
                     fileName = BASE_RECORDER_DIR + "multi_" + env + "_" + std::to_string(SharedPacketInformation::getSharedDataSize()) + "_" + ipc + "/throuput" + ".csv";
                     std::cout << fileName << std::endl;
@@ -179,14 +181,13 @@ main(int argc, char* argv[]) {
                     ofs << std::setfill('0') << std::setw(6) << endTime.tv_nsec << ",";
                     ofs << endTime.tv_nsec - startTime.tv_nsec << std::endl;
 
-                    std::cout << "============= throughput evalucation fin==============" << std::endl;
-                    std::cout << "============= loop ==============" << std::endl;
-
+                    std::cout << "============= loop start==============" << std::endl;
                     while(time(NULL) < endwait) {
                         sharedBuffer->reader_.wait();
                             dpi = &(sharedBuffer->sharedData_);
                         sharedBuffer->writer_.post();
                     }
+                    std::cout << "============= loop fin==============" << std::endl;
                 }
             }
             break;

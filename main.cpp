@@ -78,9 +78,35 @@ main(int argc, char* argv[]) {
                     counter++;
                 }
                 clock_gettime(CLOCK_MONOTONIC, &endTime);
-            } else {
+            } else if (atoi(argv[3]) < 60) {
                 std::cout << "==================" << seconds << "se sec timer=================" << std::endl;
                 bridge.callDoorWithSem();
+                while(time(NULL) < endwait) {
+                    Dpi *dpi;
+                    bridge.getPacketDataWithSem(dpi);
+                    delete dpi;
+                }
+            } else {
+                std::cout << "================== throughput evaluation: 1000 times =================" << std::endl;
+                clock_gettime(CLOCK_MONOTONIC, &startTime);
+                bridge.callDoorWithSem();
+                while(counter<MAX_COUNT) {
+                    Dpi *dpi;
+                    bridge.getPacketDataWithSem(dpi);
+                    delete dpi;
+                    counter++;
+                }
+                clock_gettime(CLOCK_MONOTONIC, &endTime);
+                std::cout << "============= throughput evalucation fin==============" << std::endl;
+
+                fileName = BASE_RECORDER_DIR + "multi_" + env + "_" + std::to_string(SharedPacketInformation::getSharedDataSize()) + "_" + ipc + "/throuput" + ".csv";
+                std::cout << fileName << std::endl;
+                std::ofstream ofs(fileName.c_str(), std::ios::app);
+                ofs << std::setfill('0') << std::setw(6) << startTime.tv_nsec << ",";
+                ofs << std::setfill('0') << std::setw(6) << endTime.tv_nsec << ",";
+                ofs << endTime.tv_nsec - startTime.tv_nsec << std::endl;
+
+                std::cout << "============= loop start==============" << std::endl;
                 while(time(NULL) < endwait) {
                     Dpi *dpi;
                     bridge.getPacketDataWithSem(dpi);
@@ -177,9 +203,9 @@ main(int argc, char* argv[]) {
                     fileName = BASE_RECORDER_DIR + "multi_" + env + "_" + std::to_string(SharedPacketInformation::getSharedDataSize()) + "_" + ipc + "/throuput" + ".csv";
                     std::cout << fileName << std::endl;
                     std::ofstream ofs(fileName.c_str(), std::ios::app);
-                    ofs << std::setfill('0') << std::setw(6) << startTime.tv_nsec << ",";
-                    ofs << std::setfill('0') << std::setw(6) << endTime.tv_nsec << ",";
-                    ofs << endTime.tv_nsec - startTime.tv_nsec << std::endl;
+                     ofs << std::setfill('0') << std::setw(6) << startTime.tv_nsec << ",";
+                     ofs << std::setfill('0') << std::setw(6) << endTime.tv_nsec << ",";
+                     ofs << endTime.tv_nsec - startTime.tv_nsec << std::endl;
 
                     std::cout << "============= loop start==============" << std::endl;
                     while(time(NULL) < endwait) {
